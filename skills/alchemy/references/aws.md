@@ -87,7 +87,7 @@ A `consume...` call in Construction creates the trigger (event source mapping, n
 | Kinesis | `AWS.Kinesis.consumeStreamRecords(stream, ...)` | `AWS.Lambda.StreamEventSource` |
 | Schedule | `AWS.Scheduler.consumeSchedule(AWS.Scheduler.every("5 minutes"), (event) => ...)` or `AWS.Scheduler.cron("cron(0 3 * * ? *)")` | `AWS.Lambda.ScheduleEventSource` |
 
-Handlers get an Effect `Stream` of records. A sink writes a stream out: `Stream.run(sink)` with `const sink = yield* AWS.SQS.QueueSink(queue)` and `AWS.SQS.QueueSinkHttp`. Many other services expose `consume...Events` functions for their EventBridge events.
+Handlers get an Effect `Stream` of records, except `consumeSchedule`, whose handler gets one `ScheduleEvent`. A sink writes a stream out: `Stream.run(sink)` with `const sink = yield* AWS.SQS.QueueSink(queue)` and `AWS.SQS.QueueSinkHttp`. Many other services expose `consume...Events` functions for their EventBridge events.
 
 ## Websites
 
@@ -99,4 +99,4 @@ Handlers get an Effect `Stream` of records. A sink writes a stream out: `Stream.
 
 ## Credentials
 
-`alchemy profile edit --add AWS` offers SSO, console login (AWS CLI v2.32+) or stored access keys. `alchemy profile refresh` renews an expired session. With `CI=true`, the CLI reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`, and `AWS_REGION` (required). `AWS_ACCOUNT_ID` is optional, otherwise STS resolves it.
+`alchemy profile edit --add AWS` offers SSO, console login (AWS CLI v2.32+) or stored access keys. `alchemy profile refresh` renews an expired session. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION`, with optional `AWS_SESSION_TOKEN`, beat the profile whenever the set is complete, CI or not. Under `CI=true` they are the only source. `AWS_ACCOUNT_ID` is optional, otherwise STS resolves it.

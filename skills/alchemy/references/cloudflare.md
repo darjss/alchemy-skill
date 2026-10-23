@@ -22,7 +22,7 @@ Each binding has three parts. Declare the resource (lazy, fine at module scope).
 
 Client calls, all returning Effects:
 
-- D1. `db.prepare(sql).bind(...values).all()`, `.first()`, `.run()`, plus `db.exec(sql)`, `db.batch([...])`, and `db.raw` for the native `D1Database` (handy for Drizzle).
+- D1. `db.prepare(sql).bind(...values).all()`, `.first()`, `.run()`, plus `db.exec(sql)`, `db.batch([...])`, and `yield* db.raw` in Runtime for the native `D1Database`. For Drizzle, use `yield* Drizzle.D1(db, { relations })` in Construction from `@alchemy.run/drizzle` (see `examples/cloudflare-d1-drizzle`).
 - R2. `bucket.get(key)`, `head`, `list`, `put(key, body)`, `delete(keys)`. Presigned S3 URLs need `Cloudflare.R2.S3Credentials(Files, { access: "read-write" })`.
 - KV. `kv.get(key)`, `kv.get(key, "text")`, `put`, `delete`.
 - Queue. `queue.send(body)`, `queue.sendBatch(messages)`. The consumer handler gets one `Stream` of messages per batch. Success acks the batch and failure retries it. `consumeQueueMessages` also creates the `Queues.Consumer` resource.
@@ -72,11 +72,9 @@ The one-call class above makes the stack import the Worker's whole implementatio
 
 ```ts
 // src/ApiWorker.ts: the identifier only, cheap to import
-import type { RuntimeContext } from "alchemy";
-import type { HttpEffect } from "alchemy/Http";
 import * as Cloudflare from "@alchemy.run/cloudflare";
 
-export class ApiWorker extends Cloudflare.Worker<ApiWorker, { fetch: HttpEffect<RuntimeContext> }>()("Api") {}
+export class ApiWorker extends Cloudflare.Worker<ApiWorker, {}>()("Api") {}
 ```
 
 ```ts
@@ -84,7 +82,7 @@ export class ApiWorker extends Cloudflare.Worker<ApiWorker, { fetch: HttpEffect<
 export default ApiWorker.make({ main: import.meta.url }, Effect.gen(function* () { /* ... */ }));
 ```
 
-The stack then does `yield* ApiWorker` and pipes `Effect.provide(ApiLive)` with the default export. The declared shape is the type `fetch` must meet, and the runtime provides `RuntimeContext` to `fetch`, so put it in the shape as above. With a bare `{ fetch: HttpEffect }`, client calls inside `fetch` fail to type-check until you provide `RuntimeContext` yourself.
+The stack then does `yield* ApiWorker` and pipes `Effect.provide(ApiLive)` with the default export. The second type parameter is the Worker's RPC shape, the methods other Workers can call through `bindWorker`. Use `{}` for a Worker that only serves `fetch`.
 
 ## Worker props
 
@@ -97,7 +95,7 @@ All of these are on `WorkerProps` in `Workers/Worker.ts`.
 - `Cloudflare.Worker.URL` is the Worker's own URL. Use it in `env`, or `yield*` it in Construction to get an accessor, because a Worker cannot reference its own `url` Output.
 - `assets: "./assets"` serves static files. `observability: { enabled: true }`, `placement: { mode: "smart" }`, `limits`, `tailConsumers` and `name` (pins the physical name) are the other common props.
 - `dev: { port, host, strictPort }` for `alchemy dev`. The default Worker port is 1337, and a taken port moves to the next free one unless `strictPort` is set. `dev: { mode: "external", url }` skips the local Worker when another dev server serves it.
-- `env: { ... }` is for async Workers and websites. Values route by shape. `Redacted<string>` and `Config.Redacted` become `secret_text`, `string` becomes `plain_text`, a Worker becomes a service binding, a resource becomes its native binding, and anything else becomes `json`. Type the handler's env with `Cloudflare.InferEnv<typeof MyWorker>`.
+- `env: { ... }` binds values to any Worker or website. Values route by shape. `Redacted<string>` and any `Config` become `secret_text`, `string` becomes `plain_text`, a Worker becomes a service binding, a resource becomes its native binding, and anything else becomes `json`. Type the handler's env with `Cloudflare.InferEnv<typeof MyWorker>`.
 
 Alchemy always adds `ALCHEMY_PHASE=runtime`, `ALCHEMY_STAGE`, `ALCHEMY_STACK_NAME`, `ALCHEMY_WORKER_NAME` and `ALCHEMY_CLOUDFLARE_ACCOUNT_ID` as plain-text bindings (`Workers/WorkerProvider.ts`).
 
@@ -156,4 +154,4 @@ Pin a resource live with `.pipe(Alchemy.remote())`, for example D1 and R2 when b
 
 ## Credentials
 
-`alchemy profile edit --add Cloudflare` signs in with OAuth or an API token. With `CI=true`, the CLI reads `CLOUDFLARE_ACCOUNT_ID` plus `CLOUDFLARE_API_TOKEN`, or `CLOUDFLARE_API_KEY` with `CLOUDFLARE_EMAIL`.
+`alchemy profile edit --add Cloudflare` signs in with OAuth or an API token. `CLOUDFLARE_ACCOUNT_ID` plus `CLOUDFLARE_API_TOKEN`, or `CLOUDFLARE_API_KEY` with `CLOUDFLARE_EMAIL`, beats the profile whenever the set is complete, so a `.env` that holds them overrides `--profile`. Under `CI=true` they are the only source.
