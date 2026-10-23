@@ -1,0 +1,21 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "alchemy-skill",
+  "description": "Agent skill for Alchemy v2 (alchemy.run), Infrastructure-as-Effects on Effect 4",
+  "owner": { "name": "darjss" },
+  "plugins": [
+    {
+      "name": "alchemy",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/alchemy"],
+      "description": "Alchemy v2 stacks, Cloudflare Workers, AWS Lambdas, bindings, secrets, stages and the CLI",
+      "version": "0.1.0",
+      "author": { "name": "darjss" },
+      "homepage": "https://github.com/darjss/alchemy-skill",
+      "repository": "https://github.com/darjss/alchemy-skill",
+      "license": "MIT",
+      "keywords": ["alchemy", "effect", "cloudflare", "aws", "iac", "skill"]
+    }
+  ]
+}
